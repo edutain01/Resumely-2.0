@@ -10,9 +10,10 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { user } = useSelector((state) => state.auth)
+  const { user, error: authError } = useSelector((state) => state.auth)
 
   // Redirect if already logged in
   useEffect(() => {
@@ -20,6 +21,14 @@ export default function Login() {
       navigate(user.role === 'admin' ? '/admin/dashboard' : '/dashboard', { replace: true })
     }
   }, [user, navigate])
+
+  // Show auth error if any
+  useEffect(() => {
+    if (authError) {
+      setError(authError)
+      toast.error(authError)
+    }
+  }, [authError])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -29,19 +38,32 @@ export default function Login() {
     }
 
     setLoading(true)
+    setError('') // Clear previous errors
     try {
+      console.log('Attempting login with:', { email })
       const result = await dispatch(login({ email, password }))
+      
+      console.log('Login result:', result)
       
       if (login.fulfilled.match(result)) {
         const { user } = result.payload
+        console.log('Login successful, user:', user)
         toast.success(`Welcome back, ${user.name}!`)
+        setError('') // Clear any errors
         // Navigation will happen via useEffect when user state updates
+        setLoading(false)
       } else {
-        toast.error(result.payload || 'Login failed')
+        const errorMessage = result.payload || result.error?.message || 'Login failed'
+        console.error('Login failed:', result)
+        setError(errorMessage)
+        toast.error(errorMessage)
         setLoading(false)
       }
     } catch (error) {
-      toast.error(error.message || 'Login failed')
+      console.error('Login error caught:', error)
+      const errorMsg = error.message || error.response?.data?.message || 'Login failed'
+      setError(errorMsg)
+      toast.error(errorMsg)
       setLoading(false)
     }
   }
@@ -126,6 +148,13 @@ export default function Login() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Error Message */}
+              {(error || authError) && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error || authError}
+                </div>
+              )}
+
               {/* Email Input */}
               <div>
                 <label className="block text-sm font-semibold text-neutral-700 mb-2">

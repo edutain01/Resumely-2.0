@@ -2,27 +2,23 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
-import { User, Mail, Lock, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react'
+import { User, Mail, Lock, ArrowRight, Sparkles, CheckCircle2, Shield } from 'lucide-react'
 import { getOAuthUrl } from '../../config/api.config'
 
 export default function Register() {
+  const [step, setStep] = useState(1) // 1: Email/Password, 2: OTP Verification
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
+  const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  const handleSubmit = async (e) => {
+  const handleSendOTP = async (e) => {
     e.preventDefault()
 
-    if (!name || !email || !password || !confirmPassword) {
-      toast.error('Please fill in all fields')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match')
+    if (!email || !password) {
+      toast.error('Please fill in email and password')
       return
     }
 
@@ -33,11 +29,54 @@ export default function Register() {
 
     setLoading(true)
     try {
-      await api.post('/auth/register', { name, email, password })
-      toast.success('Account created successfully! Please log in.')
-      navigate('/login')
+      await api.post('/auth/send-registration-otp', { 
+        email, 
+        password,
+        name: name || undefined
+      })
+      toast.success('OTP sent to your email! Please check your inbox.')
+      setStep(2)
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed')
+      toast.error(error.response?.data?.message || 'Failed to send OTP')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerifyOTP = async (e) => {
+    e.preventDefault()
+
+    if (!otp || otp.length !== 6) {
+      toast.error('Please enter a valid 6-digit OTP')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await api.post('/auth/verify-registration-otp', { email, otp })
+      toast.success('User account creation is complete')
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate('/login')
+      }, 1500)
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'OTP verification failed')
+      if (error.response?.data?.attemptsRemaining !== undefined) {
+        toast.error(`${error.response.data.attemptsRemaining} attempts remaining`)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResendOTP = async () => {
+    setLoading(true)
+    try {
+      await api.post('/auth/resend-registration-otp', { email })
+      toast.success('OTP resent to your email!')
+      setOtp('')
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to resend OTP')
     } finally {
       setLoading(false)
     }
@@ -133,117 +172,183 @@ export default function Register() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Name Input */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="input-field pl-12"
-                    placeholder="John Doe"
-                    required
-                  />
+            {step === 1 ? (
+              <form onSubmit={handleSendOTP} className="space-y-5">
+                {/* Name Input (Optional) */}
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                    Full Name (Optional)
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="input-field pl-12"
+                      placeholder="John Doe"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Email Input */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="input-field pl-12"
-                    placeholder="you@example.com"
-                    required
-                  />
+                {/* Email Input */}
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="input-field pl-12"
+                      placeholder="you@example.com"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Password Input */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="input-field pl-12"
-                    placeholder="At least 6 characters"
-                    required
-                  />
+                {/* Password Input */}
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="input-field pl-12"
+                      placeholder="At least 6 characters"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
 
-              {/* Confirm Password Input */}
-              <div>
-                <label className="block text-sm font-semibold text-neutral-700 mb-2">
-                  Confirm Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                {/* Terms */}
+                <div className="flex items-start gap-2">
                   <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="input-field pl-12"
-                    placeholder="Confirm your password"
+                    type="checkbox"
                     required
+                    className="mt-1 w-4 h-4 text-primary-500 rounded border-neutral-300 focus:ring-primary-500"
                   />
+                  <label className="text-sm text-neutral-600">
+                    I agree to the{' '}
+                    <a href="#" className="text-primary-500 hover:text-primary-600 font-semibold">
+                      Terms of Service
+                    </a>{' '}
+                    and{' '}
+                    <a href="#" className="text-primary-500 hover:text-primary-600 font-semibold">
+                      Privacy Policy
+                    </a>
+                  </label>
                 </div>
-              </div>
 
-              {/* Terms */}
-              <div className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  required
-                  className="mt-1 w-4 h-4 text-primary-500 rounded border-neutral-300 focus:ring-primary-500"
-                />
-                <label className="text-sm text-neutral-600">
-                  I agree to the{' '}
-                  <a href="#" className="text-primary-500 hover:text-primary-600 font-semibold">
-                    Terms of Service
-                  </a>{' '}
-                  and{' '}
-                  <a href="#" className="text-primary-500 hover:text-primary-600 font-semibold">
-                    Privacy Policy
-                  </a>
-                </label>
-              </div>
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Sending OTP...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Send OTP</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerifyOTP} className="space-y-5">
+                <div className="text-center mb-6">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
+                    <Shield className="w-8 h-8 text-primary-600" />
+                  </div>
+                  <h3 className="text-xl font-heading font-bold text-neutral-900 mb-2">
+                    Verify Your Email
+                  </h3>
+                  <p className="text-neutral-600 text-sm">
+                    We've sent a 6-digit OTP to <strong>{email}</strong>
+                  </p>
+                </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating account...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Create Account</span>
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-            </form>
+                {/* OTP Input */}
+                <div>
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
+                    Enter OTP
+                  </label>
+                  <div className="relative">
+                    <Shield className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-neutral-400" />
+                    <input
+                      type="text"
+                      value={otp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setOtp(value);
+                      }}
+                      className="input-field pl-12 text-center text-2xl tracking-widest font-mono"
+                      placeholder="000000"
+                      maxLength={6}
+                      required
+                    />
+                  </div>
+                  <p className="text-xs text-neutral-500 mt-2">
+                    Enter the 6-digit code sent to your email
+                  </p>
+                </div>
+
+                {/* Resend OTP */}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleResendOTP}
+                    disabled={loading}
+                    className="text-sm text-primary-500 hover:text-primary-600 font-semibold disabled:opacity-50"
+                  >
+                    Didn't receive OTP? Resend
+                  </button>
+                </div>
+
+                {/* Back Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep(1);
+                    setOtp('');
+                  }}
+                  disabled={loading}
+                  className="text-sm text-neutral-600 hover:text-neutral-800 w-full"
+                >
+                  ← Back to registration
+                </button>
+
+                {/* Verify Button */}
+                <button
+                  type="submit"
+                  disabled={loading || otp.length !== 6}
+                  className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Verifying...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Verify & Create Account</span>
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
 
             {/* Divider */}
             <div className="relative my-6">

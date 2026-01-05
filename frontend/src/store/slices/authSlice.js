@@ -6,14 +6,21 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
+      console.log('Login API call:', credentials)
       const response = await api.post('/auth/login', credentials)
+      console.log('Login API response:', response.data)
+      
       if (response.data.success) {
         localStorage.setItem('token', response.data.data.token)
         return response.data.data
       }
-      return rejectWithValue(response.data.message)
+      console.error('Login failed - no success flag:', response.data)
+      return rejectWithValue(response.data.message || 'Login failed')
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Login failed')
+      console.error('Login API error:', error)
+      console.error('Error response:', error.response?.data)
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed'
+      return rejectWithValue(errorMessage)
     }
   }
 )
