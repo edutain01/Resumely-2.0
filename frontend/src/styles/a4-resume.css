@@ -1,0 +1,161 @@
+/* A4 Resume Print Styles
+ * These styles ensure pixel-perfect PDF output matching the preview
+ */
+
+/* A4 Page Setup */
+@page {
+  size: A4;
+  margin: 0;
+}
+
+/* Print-specific overrides */
+@media print {
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Ensure colors print correctly */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+  
+  /* A4 Resume Container */
+  .a4-resume-container {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    max-width: 210mm !important;
+    margin: 0 !important;
+    padding: 12mm 15mm !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  /* Prevent sections from breaking across pages */
+  .a4-resume-container section,
+  .a4-resume-container article,
+  .a4-resume-container header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  
+  /* Allow page breaks between major sections */
+  .a4-resume-container section {
+    page-break-before: auto;
+    page-break-after: auto;
+  }
+  
+  /* Keep headings with their content */
+  .a4-resume-container h1,
+  .a4-resume-container h2,
+  .a4-resume-container h3 {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+  
+  /* Ensure lists stay together */
+  .a4-resume-container ul,
+  .a4-resume-container ol {
+    page-break-inside: avoid !important;
+  }
+  
+  /* Hide non-printable elements */
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Screen styles for A4 preview */
+@media screen {
+  .a4-preview-wrapper {
+    background-color: #525659;
+    padding: 20px;
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    overflow-y: auto;
+  }
+  
+  .a4-preview-container {
+    background-color: white;
+    width: 210mm;
+    min-height: 297mm;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                0 2px 4px -1px rgba(0, 0, 0, 0.06),
+                0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+  }
+  
+  /* Scale for smaller screens */
+  @media (max-width: 900px) {
+    .a4-preview-container {
+      transform: scale(0.7);
+      transform-origin: top center;
+    }
+  }
+  
+  @media (max-width: 600px) {
+    .a4-preview-container {
+      transform: scale(0.5);
+      transform-origin: top center;
+    }
+  }
+}
+
+/* Typography base styles */
+.a4-resume-container {
+  font-family: Arial, sans-serif;
+  font-size: 10pt;
+  line-height: 1.5;
+  color: #1f2937;
+}
+
+/* Section title styles */
+.a4-resume-container h2 {
+  font-size: 12pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5mm;
+  margin: 0 0 3mm 0;
+  padding-bottom: 1.5mm;
+  border-bottom: 0.5mm solid #e5e7eb;
+}
+
+/* Item heading styles */
+.a4-resume-container h3 {
+  font-size: 11pt;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Paragraph styles */
+.a4-resume-container p {
+  margin: 0;
+  font-size: 10pt;
+}
+
+/* List styles */
+.a4-resume-container ul {
+  margin: 1.5mm 0 0 0;
+  padding-left: 5mm;
+}
+
+.a4-resume-container li {
+  font-size: 9.5pt;
+  margin-bottom: 0.8mm;
+  line-height: 1.4;
+}
+
+/* Skill tag styles */
+.skill-tag {
+  display: inline-block;
+  padding: 1mm 3mm;
+  margin: 0 1mm 1mm 0;
+  border-radius: 1mm;
+  font-size: 9pt;
+  font-weight: 500;
+}
