@@ -1,7 +1,19 @@
 import axios from 'axios'
 
+// Use environment variable for API URL in production, or proxy in development
+const getBaseURL = () => {
+  // In production (Vercel), use the full backend URL from environment variable
+  if (import.meta.env.VITE_API_URL) {
+    const apiUrl = import.meta.env.VITE_API_URL
+    // Ensure it ends with /api if not already included
+    return apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`
+  }
+  // In development, use the proxy
+  return '/api'
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: getBaseURL(),
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
