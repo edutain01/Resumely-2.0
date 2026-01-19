@@ -50,3 +50,4 @@ const TempRegistration = mongoose.model('TempRegistration', tempRegistrationSche
 
 export default TempRegistration;
 
+
