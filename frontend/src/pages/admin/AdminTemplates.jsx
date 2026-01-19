@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
-import { Plus, Edit, Trash2, FileType, RefreshCw } from 'lucide-react'
+import { Plus, Edit, Trash2, FileType, RefreshCw, X, Layers } from 'lucide-react'
+import ConfirmationModal from '../../components/ui/ConfirmationModal'
 
 export default function AdminTemplates() {
   const [templates, setTemplates] = useState([])
@@ -23,6 +24,7 @@ export default function AdminTemplates() {
   }, [])
 
   const fetchTemplates = async () => {
+    setLoading(true)
     try {
       const response = await api.get('/admin/templates')
       if (response.data.success) {
@@ -95,16 +97,35 @@ export default function AdminTemplates() {
     })
   }
 
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case 'modern': return 'bg-purple-100 text-purple-700'
+      case 'minimal': return 'bg-neutral-100 text-neutral-700'
+      case 'professional': return 'bg-primary-100 text-primary-700'
+      default: return 'bg-accent-100 text-accent-700'
+    }
+  }
+
   if (loading) {
-    return <div className="text-center py-12">Loading...</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Templates Management</h1>
-          <p className="text-gray-600 mt-1">Manage resume templates</p>
+    <div className="p-8 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+            <Layers className="w-6 h-6 text-purple-600" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-heading font-bold text-neutral-900">Templates Management</h1>
+            <p className="text-neutral-600 mt-1">Manage resume templates</p>
+          </div>
         </div>
         <div className="flex gap-3">
           <button
@@ -124,10 +145,12 @@ export default function AdminTemplates() {
 
       {/* Templates List */}
       {templates.length === 0 ? (
-        <div className="card text-center py-12">
-          <FileType size={64} className="mx-auto mb-4 text-gray-400" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No templates yet</h3>
-          <p className="text-gray-600 mb-6">Create your first template to get started</p>
+        <div className="card text-center py-16">
+          <div className="w-20 h-20 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4">
+            <FileType size={40} className="text-purple-600" />
+          </div>
+          <h3 className="text-xl font-heading font-bold text-neutral-900 mb-2">No templates yet</h3>
+          <p className="text-neutral-600 mb-6">Create your first template to get started</p>
           <button onClick={() => setShowForm(true)} className="btn-primary inline-flex items-center gap-2">
             <Plus size={20} />
             Create Template
@@ -136,40 +159,47 @@ export default function AdminTemplates() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map((template) => (
-          <div key={template._id} className="card">
+          <div key={template._id} className="card card-hover group">
             <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">{template.name}</h3>
-                <p className="text-sm text-gray-500 capitalize">{template.category}</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FileType size={20} className="text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-heading font-bold text-neutral-900">{template.name}</h3>
+                  <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${getCategoryColor(template.category)}`}>
+                    {template.category}
+                  </span>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <button
                   onClick={() => handleEdit(template)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+                  className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
                 >
                   <Edit size={18} />
                 </button>
                 <button
                   onClick={() => handleDelete(template._id, template.name)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded"
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 >
                   <Trash2 size={18} />
                 </button>
               </div>
             </div>
-            <p className="text-sm text-gray-600 mb-4">{template.description}</p>
+            <p className="text-sm text-neutral-600 mb-4 line-clamp-2">{template.description}</p>
             <div className="flex gap-2">
               <span
-                className={`px-2 py-1 rounded text-xs ${
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${
                   template.isActive
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-success-100 text-success-700'
+                    : 'bg-neutral-100 text-neutral-600'
                 }`}
               >
                 {template.isActive ? 'Active' : 'Inactive'}
               </span>
               {template.isDefault && (
-                <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">
+                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary-100 text-primary-700">
                   Default
                 </span>
               )}
@@ -181,33 +211,55 @@ export default function AdminTemplates() {
 
       {/* Template Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
-            <h2 className="text-xl font-semibold mb-4">
-              {editingTemplate ? 'Edit Template' : 'New Template'}
-            </h2>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 my-8 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                  {editingTemplate ? <Edit className="w-6 h-6 text-purple-600" /> : <Plus className="w-6 h-6 text-purple-600" />}
+                </div>
+                <div>
+                  <h2 className="text-xl font-heading font-bold text-neutral-900">
+                    {editingTemplate ? 'Edit Template' : 'New Template'}
+                  </h2>
+                  <p className="text-sm text-neutral-500">Fill in the template details</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingTemplate(null)
+                  resetForm()
+                }}
+                className="p-2 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">Name</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="input-field"
+                  placeholder="Template name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="input-field"
                   rows={3}
+                  placeholder="Brief description of the template"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">Category</label>
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
@@ -220,7 +272,7 @@ export default function AdminTemplates() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-neutral-700 mb-2">
                   Component Code (React Component)
                 </label>
                 <textarea
@@ -232,27 +284,27 @@ export default function AdminTemplates() {
                   placeholder="React component code..."
                 />
               </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
+              <div className="flex items-center gap-6 py-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.isActive}
                     onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="rounded"
+                    className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                   />
-                  Active
+                  <span className="text-sm font-medium text-neutral-700">Active</span>
                 </label>
-                <label className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={formData.isDefault}
                     onChange={(e) => setFormData({ ...formData, isDefault: e.target.checked })}
-                    className="rounded"
+                    className="w-4 h-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
                   />
-                  Default Template
+                  <span className="text-sm font-medium text-neutral-700">Default Template</span>
                 </label>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => {

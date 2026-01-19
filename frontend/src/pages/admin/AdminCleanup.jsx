@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import api from '../../utils/api'
 import toast from 'react-hot-toast'
-import { Trash2, AlertTriangle, Database } from 'lucide-react'
+import { Trash2, AlertTriangle, Database, Info, ShieldAlert } from 'lucide-react'
 
 export default function AdminCleanup() {
   const [password, setPassword] = useState('')
@@ -57,18 +57,27 @@ export default function AdminCleanup() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Database Cleanup</h1>
-        <p className="text-gray-600 mt-1">Remove fake/test data from the database</p>
+    <div className="p-8 space-y-6 max-w-4xl">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center">
+          <ShieldAlert className="w-6 h-6 text-red-600" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-neutral-900">Database Cleanup</h1>
+          <p className="text-neutral-600 mt-1">Remove fake/test data from the database</p>
+        </div>
       </div>
 
-      <div className="bg-red-50 border-l-4 border-red-400 p-4">
-        <div className="flex">
-          <AlertTriangle className="text-red-400" size={24} />
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Warning</h3>
-            <p className="mt-2 text-sm text-red-700">
+      {/* Warning Banner */}
+      <div className="card bg-gradient-to-r from-red-50 to-amber-50 border-red-200">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+            <AlertTriangle className="w-6 h-6 text-red-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-heading font-bold text-red-800">Warning: Destructive Actions</h3>
+            <p className="mt-1 text-red-700">
               These actions are PERMANENT and cannot be undone. All data will be deleted from the database.
               Please use with extreme caution.
             </p>
@@ -79,18 +88,18 @@ export default function AdminCleanup() {
       {/* Cleanup Resumes */}
       <div className="card">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <Trash2 className="text-red-600" size={24} />
+          <div className="w-14 h-14 rounded-xl bg-red-100 flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-7 h-7 text-red-600" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Delete All Resumes</h2>
-            <p className="text-gray-600 mb-4">
+            <h2 className="text-xl font-heading font-bold text-neutral-900 mb-2">Delete All Resumes</h2>
+            <p className="text-neutral-600 mb-4">
               This will permanently delete all resumes and resume versions from the database.
             </p>
             {showConfirm === 'resumes' ? (
-              <div className="space-y-3">
+              <div className="space-y-4 p-4 bg-red-50 rounded-xl border border-red-200">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
                     Enter your admin password to confirm
                   </label>
                   <input
@@ -105,9 +114,19 @@ export default function AdminCleanup() {
                   <button
                     onClick={handleCleanupResumes}
                     disabled={loading}
-                    className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+                    className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center gap-2"
                   >
-                    {loading ? 'Deleting...' : 'Confirm Delete All Resumes'}
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={18} />
+                        Confirm Delete All Resumes
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => {
@@ -123,8 +142,9 @@ export default function AdminCleanup() {
             ) : (
               <button
                 onClick={() => setShowConfirm('resumes')}
-                className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
+                className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center gap-2"
               >
+                <Trash2 size={18} />
                 Delete All Resumes
               </button>
             )}
@@ -135,19 +155,19 @@ export default function AdminCleanup() {
       {/* Cleanup All Test Data */}
       <div className="card">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <Database className="text-orange-600" size={24} />
+          <div className="w-14 h-14 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <Database className="w-7 h-7 text-amber-600" />
           </div>
           <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Delete All Test Data</h2>
-            <p className="text-gray-600 mb-4">
+            <h2 className="text-xl font-heading font-bold text-neutral-900 mb-2">Delete All Test Data</h2>
+            <p className="text-neutral-600 mb-4">
               This will permanently delete all resumes, resume versions, and ATS reports from the database.
               Use this to clear all fake/test data at once.
             </p>
             {showConfirm === 'all' ? (
-              <div className="space-y-3">
+              <div className="space-y-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-semibold text-neutral-700 mb-2">
                     Enter your admin password to confirm
                   </label>
                   <input
@@ -162,9 +182,19 @@ export default function AdminCleanup() {
                   <button
                     onClick={handleCleanupAllTestData}
                     disabled={loading}
-                    className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 disabled:opacity-50 flex items-center gap-2"
+                    className="bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-700 disabled:opacity-50 transition-colors flex items-center gap-2"
                   >
-                    {loading ? 'Deleting...' : 'Confirm Delete All Test Data'}
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Database size={18} />
+                        Confirm Delete All Test Data
+                      </>
+                    )}
                   </button>
                   <button
                     onClick={() => {
@@ -180,8 +210,9 @@ export default function AdminCleanup() {
             ) : (
               <button
                 onClick={() => setShowConfirm('all')}
-                className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700"
+                className="bg-amber-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-amber-700 transition-colors flex items-center gap-2"
               >
+                <Database size={18} />
                 Delete All Test Data
               </button>
             )}
@@ -189,13 +220,30 @@ export default function AdminCleanup() {
         </div>
       </div>
 
-      <div className="card bg-blue-50 border border-blue-200">
-        <h3 className="font-semibold text-blue-900 mb-2">What gets deleted?</h3>
-        <ul className="space-y-1 text-sm text-blue-800">
-          <li>• <strong>Delete All Resumes:</strong> Removes all resumes and resume versions</li>
-          <li>• <strong>Delete All Test Data:</strong> Removes resumes, resume versions, and ATS reports</li>
-          <li>• User accounts, templates, and payments are NOT affected</li>
-        </ul>
+      {/* Info Card */}
+      <div className="card bg-gradient-to-r from-primary-50 to-accent-50 border-primary-200">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+            <Info className="w-5 h-5 text-primary-600" />
+          </div>
+          <div>
+            <h3 className="font-heading font-bold text-primary-900 mb-2">What gets deleted?</h3>
+            <ul className="space-y-2 text-sm text-primary-800">
+              <li className="flex items-start gap-2">
+                <span className="text-primary-500 mt-0.5">•</span>
+                <span><strong>Delete All Resumes:</strong> Removes all resumes and resume versions</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary-500 mt-0.5">•</span>
+                <span><strong>Delete All Test Data:</strong> Removes resumes, resume versions, and ATS reports</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-success-500 mt-0.5">✓</span>
+                <span>User accounts, templates, and payments are NOT affected</span>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   )
