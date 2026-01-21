@@ -31,7 +31,7 @@ router.use(authenticate);
 router.get('/templates', async (req, res) => {
   try {
     const templates = await Template.find({ isActive: true })
-      .select('name category description isDefault')
+      .select('name category description isDefault componentCode templateStyles isBuiltIn')
       .sort({ isDefault: -1, createdAt: -1 });
 
     // If no templates exist, return empty array instead of error

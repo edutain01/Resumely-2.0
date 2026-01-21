@@ -22,6 +22,7 @@ import creditRoutes from './routes/credit.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import userRoutes from './routes/user.routes.js';
 import passportInstance from './utils/passport.utils.js';
+import { warmupEmailConnection } from './utils/email.utils.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -83,8 +84,10 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/resumly',
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => {
+.then(async () => {
   console.log('✅ MongoDB connected successfully');
+  // Warm up email connection for faster OTP delivery
+  await warmupEmailConnection();
 })
 .catch((error) => {
   console.error('❌ MongoDB connection error:', error);

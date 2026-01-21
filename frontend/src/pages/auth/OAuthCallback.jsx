@@ -14,9 +14,20 @@ export default function OAuthCallback() {
     const token = searchParams.get('token')
     const provider = searchParams.get('provider')
     const error = searchParams.get('error')
+    const errorMessage = searchParams.get('message')
 
     if (error) {
-      toast.error('OAuth authentication failed. Please try again.')
+      let displayMessage = 'OAuth authentication failed. Please try again.'
+      
+      if (error === 'google_not_configured') {
+        displayMessage = 'Google authentication is not configured. Please contact support.'
+      } else if (error === 'github_not_configured') {
+        displayMessage = 'GitHub authentication is not configured. Please contact support.'
+      } else if (errorMessage) {
+        displayMessage = decodeURIComponent(errorMessage)
+      }
+      
+      toast.error(displayMessage)
       navigate('/login')
       return
     }
@@ -27,12 +38,20 @@ export default function OAuthCallback() {
       
       // Fetch user data
       dispatch(fetchCurrentUser())
-        .then(() => {
-          toast.success(`Successfully signed in with ${provider === 'google' ? 'Google' : 'GitHub'}!`)
-          navigate('/dashboard')
+        .then((result) => {
+          if (fetchCurrentUser.fulfilled.match(result)) {
+            const providerName = provider === 'google' ? 'Google' : 'GitHub'
+            toast.success(`Successfully signed in with ${providerName}!`)
+            navigate('/dashboard')
+          } else {
+            toast.error('Failed to load user data')
+            localStorage.removeItem('token')
+            navigate('/login')
+          }
         })
         .catch(() => {
           toast.error('Failed to load user data')
+          localStorage.removeItem('token')
           navigate('/login')
         })
     } else {

@@ -29,6 +29,7 @@ export default function ResumeBuilder() {
     const [showSaveOptionsModal, setShowSaveOptionsModal] = useState(false)
     const [showEnhancementModal, setShowEnhancementModal] = useState(false)
     const [selectedTemplate, setSelectedTemplate] = useState(null)
+    const [currentTemplateData, setCurrentTemplateData] = useState(null) // Full template data for dynamic rendering
     const [savedResumes, setSavedResumes] = useState([])
     const [loadingResumes, setLoadingResumes] = useState(false)
     const [loadingTemplate, setLoadingTemplate] = useState(true)
@@ -94,14 +95,22 @@ export default function ResumeBuilder() {
                                 if (templateResponse.data.success) {
                                     const template = templateResponse.data.data.templates.find(t => t._id === templateId)
                                     if (template) {
-                                        const styleMap = {
-                                            'Standard': 'standard',
-                                            'Modern': 'modern',
-                                            'Minimal': 'minimal',
-                                            'Professional': 'professional'
-                                        }
-                                        const styleName = styleMap[template.name] || template.category?.toLowerCase() || resumeData.templateStyle || 'standard'
+                                        // Store full template data for dynamic rendering
+                                        setCurrentTemplateData(template)
+                                        
+                                        if (template.isBuiltIn) {
+                                            const styleMap = {
+                                                'StandardTemplate': 'standard',
+                                                'ModernTemplate': 'modern',
+                                                'MinimalTemplate': 'minimal',
+                                                'ProfessionalTemplate': 'professional'
+                                            }
+                                            const styleName = styleMap[template.componentCode] || template.category?.toLowerCase() || resumeData.templateStyle || 'standard'
                                         setTemplateStyle(styleName)
+                                        } else {
+                                            // Custom dynamic template
+                                            setTemplateStyle('dynamic')
+                                        }
                                     } else {
                                         // Fallback to saved templateStyle if template not found
                                         setTemplateStyle(resumeData.templateStyle || 'standard')
@@ -1533,6 +1542,7 @@ export default function ResumeBuilder() {
                                 <A4PageRenderer
                                     resumeData={{ metadata }}
                                     templateId={templateStyle}
+                                    templateData={currentTemplateData}
                                     zoom={previewZoom}
                                 />
                             </div>
@@ -1563,29 +1573,53 @@ export default function ResumeBuilder() {
                         isOpen={showTemplateModal}
                         onClose={() => setShowTemplateModal(false)}
                     currentTemplateId={selectedTemplate}
-                    onSelect={async (templateId) => {
+                    onSelect={async (templateId, templateData) => {
                             setSelectedTemplate(templateId)
-                        // Fetch template details to get style name
+                            // Store the full template data for dynamic rendering
+                            if (templateData) {
+                                setCurrentTemplateData(templateData)
+                                // Determine style name
+                                if (templateData.isBuiltIn) {
+                                    const styleMap = {
+                                        'StandardTemplate': 'standard',
+                                        'ModernTemplate': 'modern',
+                                        'MinimalTemplate': 'minimal',
+                                        'ProfessionalTemplate': 'professional'
+                                    }
+                                    const styleName = styleMap[templateData.componentCode] || templateData.category?.toLowerCase() || 'standard'
+                                    setTemplateStyle(styleName)
+                                } else {
+                                    // Custom templates use 'dynamic' as style to trigger custom rendering
+                                    setTemplateStyle('dynamic')
+                                }
+                            } else {
+                        // Fallback: fetch template details if not provided
                         try {
                             const response = await api.get('/resumes/templates')
                             if (response.data.success) {
                                 const template = response.data.data.templates.find(t => t._id === templateId)
                                 if (template) {
+                                        setCurrentTemplateData(template)
+                                        if (template.isBuiltIn) {
                                     // Map template name/category to style name
                                     const styleMap = {
-                                        'Standard': 'standard',
-                                        'Modern': 'modern',
-                                        'Minimal': 'minimal',
-                                        'Professional': 'professional'
+                                                'StandardTemplate': 'standard',
+                                                'ModernTemplate': 'modern',
+                                                'MinimalTemplate': 'minimal',
+                                                'ProfessionalTemplate': 'professional'
                                     }
-                                    const styleName = styleMap[template.name] || template.category?.toLowerCase() || 'standard'
+                                            const styleName = styleMap[template.componentCode] || template.category?.toLowerCase() || 'standard'
                                     setTemplateStyle(styleName)
+                                        } else {
+                                            setTemplateStyle('dynamic')
+                                        }
                                 }
                             }
                         } catch (error) {
                             console.error('Failed to fetch template details:', error)
                             setTemplateStyle('standard')
                         }
+                            }
                             setShowTemplateModal(false)
                             toast.success('Template selected!')
                         }}

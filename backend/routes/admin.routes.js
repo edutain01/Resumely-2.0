@@ -403,7 +403,7 @@ router.get('/templates', async (req, res) => {
  */
 router.post('/templates', [
   body('name').notEmpty().withMessage('Template name is required'),
-  body('category').isIn(['standard', 'modern', 'minimal', 'professional']).withMessage('Valid category is required'),
+  body('category').isIn(['standard', 'modern', 'minimal', 'professional', 'creative', 'executive']).withMessage('Valid category is required'),
   body('componentCode').notEmpty().withMessage('Component code is required')
 ], async (req, res) => {
   try {
@@ -416,7 +416,7 @@ router.post('/templates', [
       });
     }
 
-    const { name, description, category, componentCode, previewImage, isDefault } = req.body;
+    const { name, description, category, componentCode, templateStyles, previewImage, isDefault, isBuiltIn } = req.body;
 
     // If setting as default, unset other defaults
     if (isDefault) {
@@ -428,6 +428,8 @@ router.post('/templates', [
       description: description || '',
       category,
       componentCode,
+      templateStyles: templateStyles || '',
+      isBuiltIn: isBuiltIn || false,
       previewImage: previewImage || '',
       isDefault: isDefault || false,
       createdBy: req.user._id
@@ -475,14 +477,16 @@ router.put('/templates/:id', async (req, res) => {
       });
     }
 
-    const { name, description, category, componentCode, previewImage, isActive, isDefault } = req.body;
+    const { name, description, category, componentCode, templateStyles, previewImage, isActive, isDefault, isBuiltIn } = req.body;
 
     if (name) template.name = name;
     if (description !== undefined) template.description = description;
     if (category) template.category = category;
     if (componentCode) template.componentCode = componentCode;
+    if (templateStyles !== undefined) template.templateStyles = templateStyles;
     if (previewImage !== undefined) template.previewImage = previewImage;
     if (isActive !== undefined) template.isActive = isActive;
+    if (isBuiltIn !== undefined) template.isBuiltIn = isBuiltIn;
     
     if (isDefault) {
       await Template.updateMany({ isDefault: true, _id: { $ne: template._id } }, { isDefault: false });

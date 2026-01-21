@@ -40,7 +40,9 @@ export default function TemplateSelectionModal({ isOpen, onClose, onSelect, curr
       toast.error('Please select a template')
       return
     }
-    onSelect(selectedTemplate)
+    // Find the full template data and pass it along with the ID
+    const templateData = templates.find(t => t._id === selectedTemplate)
+    onSelect(selectedTemplate, templateData)
   }
 
   if (!isOpen) return null

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { login } from '../../store/slices/authSlice'
 import toast from 'react-hot-toast'
 import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react'
@@ -11,9 +11,34 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [searchParams] = useSearchParams()
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { user, error: authError } = useSelector((state) => state.auth)
+
+  // Handle OAuth error redirects
+  useEffect(() => {
+    const oauthError = searchParams.get('error')
+    const errorMessage = searchParams.get('message')
+    
+    if (oauthError) {
+      let displayMessage = 'Authentication failed. Please try again.'
+      
+      if (oauthError === 'google_not_configured') {
+        displayMessage = 'Google authentication is not configured.'
+      } else if (oauthError === 'github_not_configured') {
+        displayMessage = 'GitHub authentication is not configured.'
+      } else if (oauthError === 'oauth_failed') {
+        displayMessage = errorMessage ? decodeURIComponent(errorMessage) : 'OAuth authentication failed.'
+      }
+      
+      setError(displayMessage)
+      toast.error(displayMessage)
+      
+      // Clear the URL params
+      navigate('/login', { replace: true })
+    }
+  }, [searchParams, navigate])
 
   // Redirect if already logged in
   useEffect(() => {

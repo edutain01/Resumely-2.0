@@ -1,21 +1,41 @@
 import nodemailer from 'nodemailer';
 
-// Create transporter
-const createTransporter = () => {
-  // For development, use Gmail SMTP or other email service
-  // You can configure this via environment variables
-  const transporter = nodemailer.createTransport({
+// Create a singleton transporter with connection pooling for faster email delivery
+let cachedTransporter = null;
+
+const getTransporter = () => {
+  if (cachedTransporter) {
+    return cachedTransporter;
+  }
+
+  // Create transporter with connection pooling for faster subsequent emails
+  cachedTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: process.env.SMTP_PORT || 587,
-    secure: false, // true for 465, false for other ports
+    port: parseInt(process.env.SMTP_PORT) || 587,
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
     auth: {
       user: process.env.SMTP_USER || process.env.EMAIL_USER,
       pass: process.env.SMTP_PASS || process.env.EMAIL_PASS,
     },
+    // Connection pooling for faster email delivery
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
+    // Timeout settings
+    connectionTimeout: 10000, // 10 seconds
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+    // Keep connection alive
+    tls: {
+      rejectUnauthorized: false // Allow self-signed certificates
+    }
   });
 
-  return transporter;
+  return cachedTransporter;
 };
+
+// Legacy function name for backward compatibility
+const createTransporter = getTransporter;
 
 /**
  * Send OTP email to user
@@ -87,11 +107,27 @@ export const sendOTPEmail = async (email, otpCode) => {
  */
 export const verifyEmailConfig = async () => {
   try {
-    const transporter = createTransporter();
+    const transporter = getTransporter();
     await transporter.verify();
     return true;
   } catch (error) {
     console.error('Email configuration error:', error);
+    return false;
+  }
+};
+
+/**
+ * Warm up the email connection on server start
+ * This pre-establishes the SMTP connection for faster first email
+ */
+export const warmupEmailConnection = async () => {
+  try {
+    const transporter = getTransporter();
+    await transporter.verify();
+    console.log('✅ Email transporter connection warmed up');
+    return true;
+  } catch (error) {
+    console.warn('⚠️  Email warmup failed (will retry on first send):', error.message);
     return false;
   }
 };

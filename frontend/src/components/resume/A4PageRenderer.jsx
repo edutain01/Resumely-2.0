@@ -23,7 +23,7 @@ const A4_PX = {
   height: 1123 // 297mm × 3.779527559
 }
 
-const A4PageRenderer = ({ resumeData, templateId = 'standard', zoom = 100 }) => {
+const A4PageRenderer = ({ resumeData, templateId = 'standard', templateData = null, zoom = 100 }) => {
   const containerRef = useRef(null)
 
   const zoomScale = zoom / 100
@@ -111,6 +111,7 @@ const A4PageRenderer = ({ resumeData, templateId = 'standard', zoom = 100 }) => 
           <A4ResumeRenderer
             resumeData={resumeData}
             templateId={templateId}
+            templateData={templateData}
             forPrint={false}
           />
         </div>

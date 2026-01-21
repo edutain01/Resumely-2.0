@@ -13,16 +13,28 @@ const templateSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['standard', 'modern', 'minimal', 'professional'],
+    enum: ['standard', 'modern', 'minimal', 'professional', 'creative', 'executive'],
     required: true
   },
   previewImage: {
     type: String,
     default: ''
   },
+  // For built-in templates: just the component name (e.g., "StandardTemplate")
+  // For custom templates: full HTML template with placeholders
   componentCode: {
-    type: String, // React component code as string
+    type: String,
     required: true
+  },
+  // CSS styles for the template (used with custom HTML templates)
+  templateStyles: {
+    type: String,
+    default: ''
+  },
+  // Whether this is a built-in template (uses React components) or custom (uses HTML)
+  isBuiltIn: {
+    type: Boolean,
+    default: false
   },
   isActive: {
     type: Boolean,

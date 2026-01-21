@@ -3,6 +3,7 @@ import StandardTemplate from './templates/StandardTemplate'
 import ModernTemplate from './templates/ModernTemplate'
 import MinimalTemplate from './templates/MinimalTemplate'
 import ProfessionalTemplate from './templates/ProfessionalTemplate'
+import DynamicTemplateRenderer from './templates/DynamicTemplateRenderer'
 
 /**
  * A4ResumeRenderer - Pixel-perfect A4 resume renderer
@@ -11,26 +12,35 @@ import ProfessionalTemplate from './templates/ProfessionalTemplate'
  * using different template components based on templateId.
  * 
  * Key features:
- * - Dynamically loads template components
- * - Supports multiple distinct templates (standard, modern, minimal, professional)
+ * - Supports built-in templates (standard, modern, minimal, professional)
+ * - Supports dynamic templates stored in database (admin-created)
  * - Uses CSS mm units for consistent preview and PDF output
  * - Same HTML used for preview and PDF generation
+ * 
+ * For dynamic templates:
+ * - templateId should be the template object from database
+ * - Template object should have: componentCode (HTML), templateStyles (CSS)
  */
 
-const A4ResumeRenderer = ({ resumeData, templateId = 'standard', forPrint = false }) => {
+const A4ResumeRenderer = ({ resumeData, templateId = 'standard', templateData = null, forPrint = false }) => {
   // Extract metadata from resumeData (handle both formats)
   const metadata = resumeData?.metadata || resumeData || {}
 
-  // Map template IDs to template components
-  const templateMap = {
+  // Map built-in template IDs to template components
+  const builtInTemplates = {
     'standard': StandardTemplate,
     'modern': ModernTemplate,
     'minimal': MinimalTemplate,
     'professional': ProfessionalTemplate
   }
 
-  // Get the template component (default to StandardTemplate)
-  const TemplateComponent = templateMap[templateId] || templateMap['standard']
+  // Check if this is a dynamic template (has componentCode from database)
+  const isDynamicTemplate = templateData && templateData.componentCode && 
+    !builtInTemplates[templateData.componentCode] && 
+    templateData.componentCode.includes('<')  // Contains HTML
+
+  // Get the template component for built-in templates
+  const TemplateComponent = builtInTemplates[templateId] || builtInTemplates['standard']
 
   return (
     <>
@@ -112,7 +122,15 @@ const A4ResumeRenderer = ({ resumeData, templateId = 'standard', forPrint = fals
         }
       `}</style>
 
-      <TemplateComponent metadata={metadata} />
+      {isDynamicTemplate ? (
+        <DynamicTemplateRenderer 
+          templateCode={templateData.componentCode}
+          templateStyles={templateData.templateStyles || ''}
+          metadata={metadata}
+        />
+      ) : (
+        <TemplateComponent metadata={metadata} />
+      )}
     </>
   )
 }

@@ -63,31 +63,22 @@ router.post('/send-registration-otp', [
       { upsert: true, new: true }
     );
 
-    // Send OTP email
+    // Send OTP email and wait for result
     try {
       await sendOTPEmail(email, otpCode);
+      console.log(`✅ OTP email sent to ${email}`);
       res.json({
         success: true,
         message: 'OTP sent to your email. Please check your inbox.'
       });
     } catch (emailError) {
-      console.error('Email sending error:', emailError);
-      // In development, return OTP for testing
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️  Email service not configured. OTP for testing:', otpCode);
-        res.json({
-          success: true,
-          message: 'OTP generated (email service not configured). Use this OTP for testing:',
-          otp: otpCode,
-          warning: 'Email service is not configured. This OTP is only shown in development mode.'
-        });
-      } else {
-        // In production, still try to proceed but warn
-        res.json({
-          success: true,
-          message: 'OTP generated. Please check your email. If you don\'t receive it, please contact support.'
-        });
-      }
+      console.error(`❌ Failed to send OTP email to ${email}:`, emailError.message);
+      // Delete the temp registration since email failed
+      await TempRegistration.deleteOne({ email });
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email. Please check your email address and try again.'
+      });
     }
   } catch (error) {
     console.error('Send OTP error:', error);
@@ -248,30 +239,20 @@ router.post('/resend-registration-otp', [
     tempRegistration.attempts = 0;
     await tempRegistration.save();
 
-    // Send OTP email
+    // Send OTP email and wait for result
     try {
       await sendOTPEmail(email, otpCode);
+      console.log(`✅ OTP resent to ${email}`);
       res.json({
         success: true,
         message: 'OTP resent to your email. Please check your inbox.'
       });
     } catch (emailError) {
-      console.error('Email sending error:', emailError);
-      // In development, return OTP for testing
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('⚠️  Email service not configured. OTP for testing:', otpCode);
-        res.json({
-          success: true,
-          message: 'OTP regenerated (email service not configured). Use this OTP for testing:',
-          otp: otpCode,
-          warning: 'Email service is not configured. This OTP is only shown in development mode.'
-        });
-      } else {
-        res.json({
-          success: true,
-          message: 'OTP regenerated. Please check your email. If you don\'t receive it, please contact support.'
-        });
-      }
+      console.error(`❌ Failed to resend OTP to ${email}:`, emailError.message);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP email. Please try again.'
+      });
     }
   } catch (error) {
     console.error('Resend OTP error:', error);
@@ -442,36 +423,52 @@ router.get('/me', authenticate, async (req, res) => {
  * @desc    Initiate Google OAuth
  * @access  Public
  */
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+router.get('/google', (req, res, next) => {
+  // Check if Google OAuth is configured
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/login?error=google_not_configured`);
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
 
 /**
  * @route   GET /api/auth/google/callback
  * @desc    Google OAuth callback
  * @access  Public
  */
-router.get('/google/callback', passport.authenticate('google', { session: false }), async (req, res) => {
-  try {
-    const user = req.user;
+router.get('/google/callback', (req, res, next) => {
+  passport.authenticate('google', { session: false }, async (err, user, info) => {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     
-    // Check and add daily credits
-    try {
-      await checkAndAddDailyCredits(user._id);
-    } catch (creditError) {
-      console.error('Daily credits error (non-fatal):', creditError.message);
+    if (err) {
+      console.error('Google OAuth error:', err);
+      return res.redirect(`${frontendUrl}/login?error=oauth_failed&message=${encodeURIComponent(err.message || 'Authentication failed')}`);
     }
     
-    const updatedUser = await User.findById(user._id);
-    const token = generateToken(updatedUser._id);
-    setTokenCookie(res, token);
+    if (!user) {
+      console.error('Google OAuth - no user returned:', info);
+      return res.redirect(`${frontendUrl}/login?error=oauth_failed&message=${encodeURIComponent(info?.message || 'No user found')}`);
+    }
+    
+    try {
+      // Check and add daily credits
+      try {
+        await checkAndAddDailyCredits(user._id);
+      } catch (creditError) {
+        console.error('Daily credits error (non-fatal):', creditError.message);
+      }
+      
+      const updatedUser = await User.findById(user._id);
+      const token = generateToken(updatedUser._id);
+      setTokenCookie(res, token);
 
-    // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}&provider=google`);
-  } catch (error) {
-    console.error('Google OAuth callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/login?error=oauth_failed`);
-  }
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&provider=google`);
+    } catch (error) {
+      console.error('Google OAuth callback error:', error);
+      res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+    }
+  })(req, res, next);
 });
 
 /**
@@ -479,36 +476,52 @@ router.get('/google/callback', passport.authenticate('google', { session: false 
  * @desc    Initiate GitHub OAuth
  * @access  Public
  */
-router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
+router.get('/github', (req, res, next) => {
+  // Check if GitHub OAuth is configured
+  if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/login?error=github_not_configured`);
+  }
+  passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
+});
 
 /**
  * @route   GET /api/auth/github/callback
  * @desc    GitHub OAuth callback
  * @access  Public
  */
-router.get('/github/callback', passport.authenticate('github', { session: false }), async (req, res) => {
-  try {
-    const user = req.user;
+router.get('/github/callback', (req, res, next) => {
+  passport.authenticate('github', { session: false }, async (err, user, info) => {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     
-    // Check and add daily credits
-    try {
-      await checkAndAddDailyCredits(user._id);
-    } catch (creditError) {
-      console.error('Daily credits error (non-fatal):', creditError.message);
+    if (err) {
+      console.error('GitHub OAuth error:', err);
+      return res.redirect(`${frontendUrl}/login?error=oauth_failed&message=${encodeURIComponent(err.message || 'Authentication failed')}`);
     }
     
-    const updatedUser = await User.findById(user._id);
-    const token = generateToken(updatedUser._id);
-    setTokenCookie(res, token);
+    if (!user) {
+      console.error('GitHub OAuth - no user returned:', info);
+      return res.redirect(`${frontendUrl}/login?error=oauth_failed&message=${encodeURIComponent(info?.message || 'No user found')}`);
+    }
+    
+    try {
+      // Check and add daily credits
+      try {
+        await checkAndAddDailyCredits(user._id);
+      } catch (creditError) {
+        console.error('Daily credits error (non-fatal):', creditError.message);
+      }
+      
+      const updatedUser = await User.findById(user._id);
+      const token = generateToken(updatedUser._id);
+      setTokenCookie(res, token);
 
-    // Redirect to frontend with token
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/auth/callback?token=${token}&provider=github`);
-  } catch (error) {
-    console.error('GitHub OAuth callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/login?error=oauth_failed`);
-  }
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}&provider=github`);
+    } catch (error) {
+      console.error('GitHub OAuth callback error:', error);
+      res.redirect(`${frontendUrl}/login?error=oauth_failed`);
+    }
+  })(req, res, next);
 });
 
 export default router;
