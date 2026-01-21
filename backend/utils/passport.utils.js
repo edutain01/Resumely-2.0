@@ -4,6 +4,20 @@ import { Strategy as GitHubStrategy } from 'passport-github2';
 import User from '../models/User.model.js';
 import { generateToken } from './jwt.utils.js';
 
+// Helper to update auth method when linking providers
+const getUpdatedAuthMethod = (user, newProvider) => {
+  const hasPassword = !!user.password;
+  const hasGoogle = !!user.oauthProviders?.google?.id;
+  const hasGitHub = !!user.oauthProviders?.github?.id;
+  
+  const methods = [];
+  if (hasPassword) methods.push('email');
+  if (hasGoogle || newProvider === 'google') methods.push('google');
+  if (hasGitHub || newProvider === 'github') methods.push('github');
+  
+  return methods.join('+') || 'email';
+};
+
 // Google OAuth Strategy - Only initialize if credentials are provided
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy({
@@ -19,8 +33,13 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         return done(new Error('No email found in Google profile'), null);
       }
 
-      // Check if user exists with this email
-      let user = await User.findOne({ email: email.toLowerCase() });
+      // Check if user exists with this email OR Google ID (link accounts by email)
+      let user = await User.findOne({ 
+        $or: [
+          { email: email.toLowerCase() },
+          { 'oauthProviders.google.id': id }
+        ]
+      });
 
       if (user) {
         // User exists - link Google account if not already linked
@@ -30,7 +49,11 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
             id: id,
             email: email
           };
-          user.authMethod = user.password ? 'email+google' : 'google';
+          user.authMethod = getUpdatedAuthMethod(user, 'google');
+          // Update profile picture if not set
+          if (!user.profilePicture && photos?.[0]?.value) {
+            user.profilePicture = photos[0].value;
+          }
           await user.save();
         }
       } else {
@@ -65,13 +88,29 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
   passport.use(new GitHubStrategy({
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback'
+    callbackURL: process.env.GITHUB_CALLBACK_URL || '/api/auth/github/callback',
+    scope: ['user:email'] // Request email scope
   }, async (accessToken, refreshToken, profile, done) => {
     try {
       const { id, username, displayName, emails, photos } = profile;
-      const email = emails?.[0]?.value || `${username}@users.noreply.github.com`;
+      
+      // Try to get the primary verified email, fallback to any email, then noreply
+      let email = null;
+      if (emails && emails.length > 0) {
+        // First try to find primary email
+        const primaryEmail = emails.find(e => e.primary && e.verified);
+        // Then try any verified email
+        const verifiedEmail = emails.find(e => e.verified);
+        // Then any email
+        email = primaryEmail?.value || verifiedEmail?.value || emails[0]?.value;
+      }
+      
+      // Fallback to noreply if no email found
+      if (!email) {
+        email = `${username}@users.noreply.github.com`;
+      }
 
-      // Check if user exists with this email
+      // Check if user exists with this email or GitHub ID
       let user = await User.findOne({ 
         $or: [
           { email: email.toLowerCase() },
@@ -88,7 +127,11 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
             email: email,
             username: username
           };
-          user.authMethod = user.password ? 'email+github' : 'github';
+          user.authMethod = getUpdatedAuthMethod(user, 'github');
+          // Update profile picture if not set
+          if (!user.profilePicture && photos?.[0]?.value) {
+            user.profilePicture = photos[0].value;
+          }
           await user.save();
         }
       } else {
@@ -105,7 +148,7 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
             }
           },
           authMethod: 'github',
-          emailVerified: emails?.[0]?.value ? true : false,
+          emailVerified: !email.includes('noreply.github.com'),
           profilePicture: photos?.[0]?.value || ''
         });
       }

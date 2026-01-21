@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
   },
   authMethod: {
     type: String,
-    enum: ['email', 'google', 'github', 'email+google', 'email+github'],
+    enum: ['email', 'google', 'github', 'email+google', 'email+github', 'google+github', 'email+google+github'],
     default: 'email'
   },
   emailVerified: {
